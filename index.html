@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    
+    <div id="imgPokemon"></div>
+
+    <form id="pokemon" action="">
+
+        <h1 class="titulo-principal">Cadastro Pokémon</h1>
+        <div class="area">
+            <p>Nome</p>
+            <input id="nome" class="inputTxt" type="text" placeholder="Nome de Seu Pokemon">
+        </div>
+
+        <div class="area">
+            <p>Treinador</p>
+            <input id="treinador" class="inputTxt" type="text" placeholder="Treinador do Pokemon">
+        </div>
+
+        <div class="area">
+            <p>Poder</p>
+            <input id="poder" class="inputTxt" type="number" placeholder="Poder do Pokemon">
+        </div>
+
+        <div class="area">
+            <p>Tipo</p>
+            <input id="tipo" type="text" placeholder="Tipo do Pokemon" readonly>
+        </div>
+
+        <button id="btn-submit" type="submit">Enviar</button>
+        <button id="btn-reset" type="reset">Reset</button>
+
+    </form>
+
+    <p id="feedback"></p>
+
+    <div id="container">
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
