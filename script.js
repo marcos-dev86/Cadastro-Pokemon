@@ -5,7 +5,6 @@ const nomeInput = document.querySelector('#nome');
 const treinadorInput = document.querySelector('#treinador');
 const poderInput = document.querySelector('#poder');
 const tipoInput = document.querySelector('#tipo');
-const btnReset = document.querySelector('#btn-reset');
 const container = document.querySelector('#container');
 
 const URL_POKEAPI = 'https://pokeapi.co/api/v2/pokemon';
@@ -13,36 +12,99 @@ const URL_POKEAPI = 'https://pokeapi.co/api/v2/pokemon';
 let debounceBusca;
 let pokemonsCadastrados = [];
 
-const tipoCor = [
-    { tipo: "normal", borda: "#7f8c8d", fundo: "#ececec" },
-    { tipo: "water", borda: "#2980d9", fundo: "#dcecff" },
-    { tipo: "grass", borda: "#3a9d3a", fundo: "#e0f6dc" },
-    { tipo: "electric", borda: "#d4a800", fundo: "#fff7c2" },
-    { tipo: "poison", borda: "#8e44ad", fundo: "#eddcf5" },
-    { tipo: "fire", borda: "#e25822", fundo: "#ffe3d6" }
-];
+function obterEstiloPorTipo(tipos = []) {
+    const tipo = (tipos[0] || 'normal').toLowerCase();
+
+    if (tipo === 'water') {
+        return { borda: '#2980d9', fundo: '#dcecff' };
+    }
+
+    else if (tipo === 'grass') {
+        return { borda: '#3a9d3a', fundo: '#e0f6dc' };
+    }
+
+    else if (tipo === 'electric') {
+        return { borda: '#d4a800', fundo: '#fff7c2' };
+    }
+
+    else if (tipo === 'poison') {
+        return { borda: '#8e44ad', fundo: '#eddcf5' };
+    }
+
+    else if (tipo === 'fire') {
+        return { borda: '#e25822', fundo: '#ffe3d6' };
+    } 
+    
+    else if (tipo === 'psychic') {
+        return { borda: '#f777c6', fundo: '#fad6ff' };
+    }
+
+    else if (tipo === 'ice') {
+        return { borda: '#65f5ff', fundo: '#ddf1fc' };
+    }
+
+    else if (tipo === 'fighting') {
+        return { borda: '#ff7878', fundo: '#fff1f1' };
+    }
+
+    else if (tipo === 'ground ') {
+        return { borda: '#ffcd9c', fundo: '#ffeacc' };
+    }
+
+    else if (tipo === 'bug') {
+        return { borda: '#9bff7c', fundo: '#ebffe5' };
+    }
+
+    else if (tipo === 'dragon') {
+        return { borda: '#7ca5ff', fundo: '#edecff' };
+    }
+
+    else if (tipo === 'dark') {
+        return { borda: '#dadada', fundo: '#edecff' };
+    }
+
+    else if (tipo === 'fairy') {
+        return { borda: '#fc96ff', fundo: '#fae8ff' };
+    }
+
+    else {
+        return { borda: '#dadada', fundo: '#dbdbdb' };
+    }
+}
 
 async function buscarDadosPokemon(nome) {
     const nomeFormatado = nome.toLowerCase().trim();
+
     try {
         const resposta = await fetch(`${URL_POKEAPI}/${nomeFormatado}`);
+
         if (!resposta.ok) {
-            throw new Error('Pokémon não encontrado na PokeAPI');
+            return null;
         }
-        return await resposta.json();
-    } catch (error) {
+
+        const dados = await resposta.json();
+        return dados;
+    } catch (erro) {
         return null;
     }
 }
 
 function extrairImagemPokemon(dadosPokemon) {
-    if (!dadosPokemon) return null;
+    if (!dadosPokemon) {
+        return null;
+    }
+
     return dadosPokemon.sprites?.other?.['official-artwork']?.front_default;
 }
 
 function extrairTipoPokemon(dadosPokemon) {
-    if (!dadosPokemon.types) return [];
-    return dadosPokemon.types.map(item => item.type.name);
+    if (!dadosPokemon || !dadosPokemon.types) {
+        return [];
+    }
+
+    return dadosPokemon.types.map(function (item) {
+        return item.type.name;
+    });
 }
 
 function mostrarPokemon(dadosPokemon) {
@@ -51,7 +113,7 @@ function mostrarPokemon(dadosPokemon) {
     const poder = dadosPokemon.base_experience || 0;
 
     if (!dadosPokemon) {
-        imgPokemon.innerHTML = `<h3 class="txtBranco">ERROR: POKÉMON NÃO ENCONTRADO... </h3>`;
+        imgPokemon.innerHTML = '<h3 class="txtBranco">ERROR: POKÉMON NÃO ENCONTRADO... </h3>';
         tipoInput.value = '';
         poderInput.value = '';
         return;
@@ -65,40 +127,73 @@ function mostrarPokemon(dadosPokemon) {
     poderInput.value = poder;
 }
 
-function renderizarPokemons() {
+function verificarPokemonCampeao() {
+    let pokemonCampeao = false;
+}
+
+function criarCardPokemon() {
     container.innerHTML = '';
+    verificarPokemonCampeao();
 
-    pokemonsCadastrados.sort((a, b) => b.poder - a.poder);
+    pokemonsCadastrados.sort(function (a, b) {
+        return b.poder - a.poder;
+    });
 
-    pokemonsCadastrados.forEach((poke) => {
-        let corEncontrada = tipoCor.find(c => poke.tipos.includes(c.tipo));
-        let cor = corEncontrada ? corEncontrada : tipoCor[0];
+    if (pokemonCampeao = true) {
+        pokemonsCadastrados.forEach(function (poke) {
+            const estilo = obterEstiloPorTipo(poke.tipos);
+            const cardCampeao = document.createElement('div');
 
-        const card = document.createElement('div');
-        card.className = 'card-pokemon';
-        card.style.border = `3px solid ${cor.borda}`;
-        card.style.background = cor.fundo;
-        card.style.color = "#000";
+            cardCampeao.className = 'card-pokemon-campeao';
+            cardCampeao.style.border = `3px solid ${estilo.borda}`;
+            cardCampeao.style.background = estilo.fundo;
+            cardCampeao.style.color = '#000';
 
-        card.innerHTML = `
+            cardCampeao.innerHTML = `
+            <button class="btn-remover" onclick="removerPokemon('${poke.nome}')" aria-label="Remover ${poke.nome}">×</button>
             <div class="imgPokemon">
                 <img src="${poke.imagem}" alt="${poke.nome}">
             </div>
             <p><strong>Nome:</strong> ${poke.nome}</p>
             <p><strong>Tipo:</strong> ${poke.tipos.join(', ')}</p>
-            <p><strong>Treinador:</strong> ${poke.treinador || "Sem Treinador"}</p>
-            <p><strong>Poder:</strong> ${poke.poder}</p>
-            <button class="btn-excluir" onclick="removerPokemon('${poke.nome}')">Excluir</button>
-        `;
+            <p><strong>Treinador:</strong> ${poke.treinador || 'Sem Treinador'}</p>
+            <p><strong>Poder:</strong> ${poke.poder}</p>`;
 
-        container.appendChild(card);
+            container.appendChild(cardCampeao);
+        });
+    } else {
+
+        pokemonsCadastrados.forEach(function (poke) {
+            const estilo = obterEstiloPorTipo(poke.tipos);
+            const card = document.createElement('div');
+
+            card.className = 'card-pokemon';
+            card.style.border = `3px solid ${estilo.borda}`;
+            card.style.background = estilo.fundo;
+            card.style.color = '#000';
+
+            card.innerHTML = `
+            <button class="btn-remover" onclick="removerPokemon('${poke.nome}')" aria-label="Remover ${poke.nome}">×</button>
+            <div class="imgPokemon">
+                <img src="${poke.imagem}" alt="${poke.nome}">
+            </div>
+            <p><strong>Nome:</strong> ${poke.nome}</p>
+            <p><strong>Tipo:</strong> ${poke.tipos.join(', ')}</p>
+            <p><strong>Treinador:</strong> ${poke.treinador || 'Sem Treinador'}</p>
+            <p><strong>Poder:</strong> ${poke.poder}</p>`;
+
+            container.appendChild(card);
+        });
+    }
+}
+
+window.removerPokemon = function (nome) {
+    pokemonsCadastrados = pokemonsCadastrados.filter(function (poke) {
+        return poke.nome !== nome;
     });
-}
 
-window.removerPokemon = function(nome) {
-    pokemonsCadastrados = pokemonsCadastrados.filter(poke => poke.nome !== nome);
-    renderizarPokemons();
-}
+    criarCardPokemon();
+};
 
 form.addEventListener('submit', async function (event) {
     event.preventDefault();
@@ -121,7 +216,10 @@ form.addEventListener('submit', async function (event) {
         return;
     }
 
-    const jaCadastrado = pokemonsCadastrados.some(p => p.nome.toLowerCase() === nome.toLowerCase());
+    const jaCadastrado = pokemonsCadastrados.some(function (poke) {
+        return poke.nome.toLowerCase() === nome.toLowerCase();
+    });
+
     if (jaCadastrado) {
         feedback.textContent = '❌ Este Pokémon já foi cadastrado!';
         feedback.style.color = 'red';
@@ -147,17 +245,18 @@ form.addEventListener('submit', async function (event) {
         imagem: imagem
     });
 
-    feedback.textContent = `✅ Pokémon cadastrado com sucesso!`;
+    feedback.textContent = '✅ Pokémon cadastrado com sucesso!';
     feedback.style.color = 'green';
 
     form.reset();
     imgPokemon.innerHTML = '';
-    
-    renderizarPokemons();
+
+    criarCardPokemon();
 });
 
 nomeInput.addEventListener('input', function () {
     const nome = nomeInput.value.trim();
+
     clearTimeout(debounceBusca);
 
     if (nome.length < 3) {
@@ -171,6 +270,7 @@ nomeInput.addEventListener('input', function () {
 
     debounceBusca = setTimeout(async function () {
         const dadosApi = await buscarDadosPokemon(nome);
+
         if (!dadosApi) {
             feedback.textContent = '❌ Pokémon não encontrado.';
             feedback.style.color = 'red';
@@ -181,7 +281,7 @@ nomeInput.addEventListener('input', function () {
         }
 
         mostrarPokemon(dadosApi);
-        feedback.textContent = `✅ Pokemon encontrado!`;
+        feedback.textContent = '✅ Pokemon encontrado!';
         feedback.style.color = 'green';
     }, 700);
 });
