@@ -119,6 +119,10 @@ input:focus {
     transition: all 0.3s;
 } */
 
+.espaco {
+    margin-top: 89px;
+}
+
 .card-pokemon img {
     width: 150px;
     height: auto;

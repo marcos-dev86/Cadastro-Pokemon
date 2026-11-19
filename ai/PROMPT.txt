@@ -1,0 +1,275 @@
+Faça uma análise técnica completa de todo este projeto, desenvolvido em **Node.js**, com o objetivo de compreender sua arquitetura, identificar problemas existentes e implementar uma conexão completa e funcional com o banco de dados.
+
+Não quero apenas uma análise ou sugestões. Quero que você trabalhe diretamente no código existente, implemente as alterações necessárias, execute testes e entregue somente os arquivos que realmente foram criados ou modificados.
+
+---
+
+## 1. ANÁLISE INICIAL DO PROJETO
+
+Antes de realizar qualquer alteração, analise toda a estrutura do projeto.
+
+Investigue:
+
+- Estrutura de diretórios e organização dos arquivos.
+- Arquitetura e padrões de desenvolvimento utilizados.
+- Tecnologias, frameworks e bibliotecas instaladas.
+- Arquivo `package.json` e suas dependências.
+- Scripts de execução, desenvolvimento e build.
+- Arquivos de configuração.
+- Variáveis de ambiente e suas respectivas utilizações.
+- Rotas, controllers, services, repositories e models.
+- Middlewares, autenticação e autorização.
+- Estrutura atual de acesso e manipulação de dados.
+- Integrações externas e dependências entre módulos.
+- Funcionalidades existentes que dependem de persistência de dados.
+
+Identifique como o projeto funciona atualmente, como os módulos se comunicam e quais partes ainda não estão implementadas ou estão incompletas.
+
+Não comece modificando arquivos antes de compreender a arquitetura existente.
+
+## 2. INTEGRAÇÃO COMPLETA COM O BANCO DE DADOS
+
+Meu objetivo é ter uma integração completa entre a aplicação Node.js e o banco de dados.
+
+Analise a implementação atual e identifique tudo o que precisa ser criado, corrigido ou adaptado para que a aplicação consiga realizar operações reais no banco.
+
+Verifique:
+
+- Configuração e inicialização da conexão.
+- Driver ou ORM utilizado.
+- Compatibilidade entre a aplicação e o banco de dados.
+- Configuração de pool de conexões, quando aplicável.
+- Gerenciamento de conexões e encerramento adequado.
+- Models, entidades e schemas.
+- Relacionamentos entre tabelas.
+- Chaves primárias e estrangeiras.
+- Integridade e consistência dos dados.
+- Migrations e criação das estruturas necessárias.
+- Seeders, caso sejam necessários.
+- Tratamento de erros de conexão e consultas.
+- Repositórios e camada de persistência.
+- Operações CRUD completas.
+
+Não quero apenas uma conexão estabelecida.
+
+Quero que todas as funcionalidades existentes no projeto que dependem de persistência de dados estejam efetivamente integradas ao banco, utilizando dados reais.
+
+## 3. ATENÇÃO ESPECIAL AO ARQUIVO .ENV
+
+**IMPORTANTE: IGNORE COMPLETAMENTE A CONFIGURAÇÃO ANTIGA DO BANCO DE DADOS PRESENTE NO ARQUIVO `.env`.**
+
+Eu já substituí as informações de conexão e atualizei as credenciais.
+
+Portanto:
+
+- Não utilize valores antigos de conexão.
+- Não tente recuperar ou reutilizar configurações anteriores.
+- Não sobrescreva minhas variáveis de ambiente.
+- Não substitua minhas credenciais atuais.
+- Identifique quais variáveis de ambiente a implementação espera utilizar.
+- Adapte o código para trabalhar com a configuração atualizada.
+- Não exponha senhas, tokens ou credenciais nos logs ou na documentação.
+
+Se houver incompatibilidade entre a implementação existente e as novas configurações, ajuste o código para utilizar as variáveis atuais, sem alterar seus valores.
+
+Não crie um novo `.env` com credenciais fictícias.
+
+Se necessário, documente apenas os nomes das variáveis esperadas, sem seus valores.
+
+## 4. IMPLEMENTAÇÃO E CORREÇÕES
+
+Após concluir a análise, comece a implementar as alterações necessárias.
+
+Quero que você:
+
+1. Corrija problemas encontrados na configuração do banco.
+2. Implemente ou corrija o módulo responsável pela conexão.
+3. Organize a camada de acesso aos dados.
+4. Ajuste os models e relacionamentos.
+5. Integre controllers e services à persistência real.
+6. Elimine dados simulados (mocks), quando houver necessidade de substituí-los por dados reais.
+7. Implemente validações e tratamento adequado de erros.
+8. Garanta que as consultas utilizem parâmetros seguros contra SQL Injection.
+9. Implemente transações quando operações relacionadas exigirem atomicidade.
+10. Garanta que a aplicação não dependa de conexões duplicadas ou mal gerenciadas.
+11. Corrija inconsistências entre as estruturas esperadas pelo código e as existentes no banco.
+12. Garanta que as operações de leitura, criação, atualização e exclusão funcionem corretamente.
+
+Respeite a arquitetura existente sempre que ela estiver bem estruturada.
+
+Não faça refatorações desnecessárias e não crie arquivos ou abstrações sem necessidade técnica real.
+
+## 5. SEGURANÇA E INTEGRIDADE
+
+Durante toda a implementação:
+
+- Não exponha credenciais.
+- Não deixe senhas ou tokens diretamente no código.
+- Não utilize consultas SQL vulneráveis.
+- Não remova validações de segurança existentes.
+- Preserve autenticação e autorização.
+- Não apague dados existentes.
+- Não execute operações destrutivas sem autorização.
+- Não execute migrations destrutivas sem aprovação.
+- Não altere tabelas ou relacionamentos sem compreender seus impactos.
+- Preserve a compatibilidade com as funcionalidades atuais.
+
+Qualquer alteração que possa causar perda de dados deverá ser identificada e documentada antes de ser executada.
+
+## 6. TESTES E VALIDAÇÃO
+
+Depois da implementação, execute testes para verificar o funcionamento real da integração.
+
+Valide:
+
+- Inicialização da aplicação.
+- Conexão efetiva com o banco.
+- Execução de consultas.
+- Leitura e gravação de dados.
+- Operações de atualização e exclusão.
+- Relacionamentos entre entidades.
+- Funcionamento das rotas que dependem do banco.
+- Tratamento de falhas de conexão.
+- Integridade dos dados.
+- Ausência de erros de execução.
+- Compatibilidade com os scripts existentes.
+- Build e testes automatizados, quando disponíveis.
+
+Execute os scripts disponíveis no projeto e corrija os problemas encontrados.
+
+Não considere a integração concluída apenas porque a aplicação iniciou sem apresentar erros.
+
+É necessário comprovar que as operações de banco de dados realmente funcionam.
+
+Se algum teste não puder ser executado por falta de acesso, configuração ou dependência externa, informe claramente essa limitação. Não simule resultados positivos.
+
+## 7. REGRAS OBRIGATÓRIAS DE EXECUÇÃO
+
+- Trabalhe diretamente sobre o projeto existente.
+- Não reconstrua o projeto do zero.
+- Não remova funcionalidades existentes para facilitar a integração.
+- Não substitua tecnologias sem justificativa técnica.
+- Não altere minhas credenciais atuais.
+- Não sobrescreva o `.env`.
+- Não invente tabelas, campos ou relacionamentos sem analisar o domínio da aplicação.
+- Não deixe implementações incompletas.
+- Não deixe funções apenas simuladas quando deveriam utilizar o banco real.
+- Não esconda erros utilizando tratamentos genéricos.
+- Não faça alterações desnecessárias em arquivos que já funcionam.
+- Mantenha o código organizado, modular e seguindo boas práticas de Node.js.
+- Preserve a compatibilidade com o restante do sistema.
+- Teste as alterações antes de finalizar.
+
+## 8. ENTREGA DOS ARQUIVOS ALTERADOS
+
+**ESTA ETAPA É OBRIGATÓRIA E DEVE SER SEGUIDA RIGOROSAMENTE.**
+
+Ao finalizar o trabalho, quero receber somente os arquivos que foram criados ou modificados durante a execução.
+
+Não quero receber o projeto inteiro.
+
+### 8.1. Arquivos do projeto
+
+- Envie somente os arquivos novos ou modificados.
+- Não envie arquivos que permaneceram intactos.
+- Preserve a estrutura original de diretórios.
+- Inclua todos os arquivos novos necessários para o funcionamento da implementação.
+- Não envie o projeto inteiro compactado.
+- Não envie dependências ou pastas geradas automaticamente, como `node_modules`, `dist` ou caches, salvo necessidade técnica indispensável.
+- Não envie arquivos duplicados.
+- Não envie arquivos temporários ou desnecessários.
+
+A estrutura da entrega deverá permitir que eu identifique facilmente onde cada arquivo deve ser colocado no projeto original.
+
+### 8.2. Primeiro arquivo TXT: PROMPT.txt
+
+Crie um arquivo chamado exatamente:
+
+`PROMPT.txt`
+
+Ele deverá conter o prompt completo utilizado como instrução para a execução do trabalho, incluindo objetivos, requisitos, regras, orientações e critérios de entrega.
+
+### 8.3. Segundo arquivo TXT: ALTERACOES_REALIZADAS.txt
+
+Crie um arquivo chamado exatamente:
+
+`ALTERACOES_REALIZADAS.txt`
+
+Esse documento deverá apresentar um relatório técnico detalhado contendo:
+
+- Resumo geral do trabalho.
+- Arquitetura encontrada no projeto.
+- Problemas identificados durante a análise.
+- Alterações realizadas.
+- Arquivos criados, modificados e suas respectivas localizações.
+- Explicação do que foi implementado em cada arquivo.
+- Configuração da conexão com o banco de dados.
+- Models, tabelas e relacionamentos envolvidos.
+- Migrations e alterações estruturais realizadas.
+- Rotas, controllers e services integrados.
+- Funcionalidades que passaram a utilizar dados reais.
+- Testes executados e seus respectivos resultados.
+- Problemas que não puderam ser resolvidos.
+- Pendências e limitações encontradas.
+- Instruções necessárias para executar a implementação.
+
+Não inclua senhas, tokens, credenciais ou valores sensíveis nesse documento.
+
+### 8.4. Organização final da entrega
+
+Organize tudo em uma pasta de entrega, preservando a estrutura de diretórios dos arquivos do projeto.
+
+Os dois documentos TXT deverão ficar na raiz dessa pasta.
+
+Exemplo ilustrativo:
+
+ENTREGA/
+├── PROMPT.txt
+├── ALTERACOES_REALIZADAS.txt
+├── src/
+│   ├── config/
+│   │   └── database.js
+│   ├── models/
+│   │   └── User.js
+│   └── services/
+│       └── UserService.js
+└── ...
+
+O exemplo acima é apenas ilustrativo. Inclua exclusivamente os arquivos que realmente foram criados ou modificados.
+
+## 9. RELATÓRIO FINAL
+
+Antes de encerrar, confira se:
+
+- Todos os arquivos alterados estão na pasta de entrega.
+- Todos os arquivos novos necessários foram incluídos.
+- Os dois arquivos TXT foram criados.
+- Os caminhos dos arquivos foram preservados.
+- Nenhum arquivo intacto foi incluído desnecessariamente.
+- Nenhuma credencial foi exposta.
+- Os testes foram executados e documentados corretamente.
+- A documentação corresponde exatamente ao que foi implementado.
+
+Se possível, disponibilize a pasta de entrega compactada em ZIP para facilitar o recebimento, mantendo também os arquivos organizados.
+
+---
+
+# OBJETIVO FINAL
+
+Quero transformar a integração atual em uma implementação de banco de dados funcional, consistente, segura e pronta para utilização real.
+
+**Sua responsabilidade é:**
+
+1. Analisar completamente o projeto Node.js.
+2. Compreender sua arquitetura e funcionamento.
+3. Identificar problemas e inconsistências.
+4. Implementar a integração completa com o banco de dados.
+5. Corrigir os problemas encontrados.
+6. Testar e validar o funcionamento.
+7. Documentar tudo o que foi realizado.
+8. Entregar somente os arquivos novos ou modificados.
+9. Criar obrigatoriamente `PROMPT.txt` e `ALTERACOES_REALIZADAS.txt`.
+
+**NÃO QUERO APENAS INSTRUÇÕES SOBRE COMO FAZER. EXECUTE O TRABALHO DIRETAMENTE NO PROJETO.**
+
+**IMPORTANTE: NÃO ENVIE O PROJETO COMPLETO. ENVIE EXCLUSIVAMENTE OS ARQUIVOS ALTERADOS, OS ARQUIVOS NOVOS NECESSÁRIOS E OS DOIS DOCUMENTOS TXT OBRIGATÓRIOS.**

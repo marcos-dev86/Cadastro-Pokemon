@@ -1,0 +1,20 @@
+{
+  "name": "cadastro-pokemon",
+  "version": "1.0.0",
+  "description": "Baralho Pokemon",
+  "license": "ISC",
+  "author": "Marcos",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node migrate.js",
+    "test": "node --test test/validacao.test.js test/migrate.test.js test/api.test.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
+  }
+}

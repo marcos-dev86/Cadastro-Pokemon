@@ -1,0 +1,453 @@
+==============================================================================================
+RELATÓRIO TÉCNICO - INTEGRAÇÃO COM BANCO DE DADOS - PROJETO "CADASTRO POKEMON"
+==============================================================================================
+
+Nenhuma senha, token ou valor de credencial aparece neste documento. Apenas NOMES de variáveis.
+
+
+----------------------------------------------------------------------------------------------
+0. LEIA PRIMEIRO - 3 AVISOS IMPORTANTES
+----------------------------------------------------------------------------------------------
+
+(1) O ARQUIVO .env QUE VEIO NO ZIP ESTÁ VAZIO (0 bytes), inclusive no histórico do git.
+    Portanto as suas credenciais atualizadas NÃO chegaram até mim, e eu não pude me conectar ao
+    seu banco real. Conforme pedido, o .env não foi tocado (confirmado por comparação byte a
+    byte com o original) e nenhum .env novo foi criado.
+    Como não vi o seu .env, a única variável que o código espera é DATABASE_URL (era a única
+    que o projeto original já referenciava). Se as suas credenciais atualizadas estiverem
+    gravadas com outro nome de variável (ex.: PGHOST, DB_HOST...), o código precisa ser
+    ajustado - me informe os NOMES (nunca os valores).
+
+(2) A INTEGRAÇÃO NÃO FOI TESTADA CONTRA O SEU NEON REAL (pelo item acima, e porque o ambiente
+    de execução só acessa uma lista restrita de sites). Foi testada contra:
+      - um PostgreSQL 16 REAL (com várias conexões simultâneas),
+      - um PostgreSQL em memória (PGlite),
+    ambos atrás de um servidor de teste que implementa o protocolo HTTP do Neon, escrito a
+    partir do código-fonte do driver oficial (@neondatabase/serverless 1.0.2). Isso comprova
+    a lógica, o SQL e o tratamento de erros, mas NÃO substitui um teste real: o primeiro
+    passo na sua máquina é "npm run migrate" seguido de abrir /api/saude (ver seção 14).
+
+(3) O projeto NÃO possuía autenticação/autorização de nenhum tipo. Nada foi removido, mas a API
+    nova (criar/alterar/excluir) fica aberta a quem alcançar o servidor. Ver seção 12.
+
+
+----------------------------------------------------------------------------------------------
+1. RESUMO GERAL DO TRABALHO
+----------------------------------------------------------------------------------------------
+
+Estado inicial: a "integração" com o banco NÃO funcionava e o erro era invisível.
+  - script_db.js terminava sem exportar nenhuma função e tinha um erro de execução
+    (require('dotenv').config([quiet.true]) -> "ReferenceError: quiet is not defined").
+  - server.js carregava esse arquivo dentro de um try/catch que engolia o erro em silêncio e
+    caía em funções falsas (listar devolvia [], salvar devolvia o próprio objeto recebido).
+  - O front-end guardava os Pokémon só na memória do navegador: ao recarregar a página, tudo
+    se perdia. Nenhuma chamada ao servidor era feita.
+  - schema.sql tinha SQL inválido e não tinha coluna para o tipo do Pokémon.
+
+Estado final: o baralho é lido, gravado, atualizado e removido no PostgreSQL (Neon) através de
+uma API HTTP validada; o front-end carrega e grava via API; erros de banco aparecem de forma
+clara (log do servidor + mensagem na tela) em vez de serem escondidos; o limite de 12 Pokémon e a
+unicidade do nome são garantidos de forma atômica; há migração segura e 33 testes automatizados.
+
+
+----------------------------------------------------------------------------------------------
+2. ARQUITETURA ENCONTRADA
+----------------------------------------------------------------------------------------------
+
+Aplicação pequena, SEM framework, em Node.js (CommonJS), 100% "flat" (arquivos na raiz):
+
+  index.html + style.css + script.js   Front-end estático (formulário de cadastro, cards).
+  server.js                            Servidor HTTP nativo (módulo http): serve os 3 estáticos
+                                       e expõe /api/baralho (GET e POST).
+  script_db.js                         Camada de dados (Neon via fetch no endpoint HTTP /sql).
+  schema.sql                           Definição da tabela "baralho".
+  package.json                         Única dependência: dotenv. Sem script "start" (embora o
+                                       README mandasse usar "npm start").
+  .env                                 Vazio.
+
+Tecnologias: Node 22 (testado), dotenv 18, banco PostgreSQL no Neon acessado por HTTP (sem
+driver/ORM: usa fetch direto no endpoint https://<host>/sql com o cabeçalho
+Neon-Connection-String). Integração externa: PokéAPI (consultada pelo NAVEGADOR em script.js
+para validar o nome, obter tipos, imagem e poder base).
+
+Não existiam: controllers/services/models separados, middlewares, autenticação, autorização,
+migrations, seeders, testes, build. Não há relacionamentos entre tabelas: o domínio inteiro é
+uma única entidade (Pokémon do baralho).
+
+Regras de negócio já presentes no código original e preservadas:
+  - nome com ao menos 3 caracteres; poder >= 100; nome não repetido (sem diferenciar
+    maiúsculas); Pokémon precisa existir na PokéAPI;
+  - cards ordenados por poder e o de maior poder recebe a coroa (campeão);
+  - LIMITE_BARALHO = 12 (constante que já existia em script_db.js mas nunca foi aplicada).
+
+
+----------------------------------------------------------------------------------------------
+3. PROBLEMAS IDENTIFICADOS NA ANÁLISE
+----------------------------------------------------------------------------------------------
+
+ #  Gravidade  Problema
+ 1  CRÍTICA    script_db.js: erro "quiet is not defined" no config() do dotenv -> o módulo nunca
+                carregava; server.js engolia o erro (catch vazio) e passava a usar funções falsas.
+ 2  CRÍTICA    script_db.js não exportava nada (listarBaralho, contarBaralho,
+                salvarPokemonBaralho eram importadas pelo server.js e não existiam).
+ 3  CRÍTICA    Front-end sem persistência: dados só em memória; nenhuma chamada a /api/baralho.
+ 4  ALTA       schema.sql inválido: "IF NOT EXISTS CREATE TABLE" (ordem errada), coluna
+                "id PRIMARY KEY" sem tipo, última linha sem ";" e nenhuma coluna para o tipo do
+                Pokémon (o front-end usa o tipo para colorir e exibir o card).
+ 5  ALTA       Erros de banco eram convertidos em retorno null/[] (erro escondido).
+ 6  ALTA       Sem validação no servidor: POST gravaria qualquer corpo recebido; JSON inválido
+                virava HTTP 500 "Falha ao salvar".
+ 7  ALTA       XSS armazenado em potencial: o front-end montava os cards com innerHTML e
+                onclick="removerPokemon('${nome}')" sem escapar. Antes só havia dado digitado
+                pelo próprio usuário; com persistência compartilhada isso vira vulnerabilidade.
+ 8  MÉDIA      Limite de 12 nunca aplicado; checagem de duplicidade só no navegador.
+ 9  MÉDIA      Não existia rota de exclusão (botão "x" só removia da memória) nem de atualização.
+10  MÉDIA      Corpo da requisição lido sem limite de tamanho; stream de arquivo sem tratamento de
+                erro (poderia derrubar o processo).
+11  MÉDIA      new URL(DATABASE_URL) executado ao importar o módulo: sem a variável, o processo
+                quebra; e o objeto de erro do new URL() carrega a string original (risco de
+                vazar credenciais em log).
+12  BAIXA      package.json sem script "start" (README diz "npm start"); porta lida de
+                process.env.PORT antes de o dotenv ser carregado no server.js.
+13  BAIXA      Sem .gitignore: .env e node_modules/ estão versionados no git do projeto.
+14  BAIXA      Imports mortos em script_db.js (require('node:console')) e contarBaralho importada
+                no server.js e nunca usada.
+
+
+----------------------------------------------------------------------------------------------
+4. ALTERAÇÕES REALIZADAS (VISÃO GERAL)
+----------------------------------------------------------------------------------------------
+
+ - Reescrita da camada de dados (script_db.js) com conexão por HTTP do Neon, tratamento de erros
+   classificado, transação para inclusão, consultas parametrizadas e CRUD completo.
+ - Servidor (server.js) passou a expor GET/POST/PUT/PATCH/DELETE reais, com validação, status HTTP
+   corretos e sem fallbacks silenciosos.
+ - Novo módulo de validação (validacao.js).
+ - Novo script de migração segura (migrate.js) e schema.sql corrigido.
+ - Front-end (script.js) integrado à API e protegido contra XSS.
+ - Scripts npm (start, migrate, test), .gitignore, README e 33 testes automatizados.
+
+
+----------------------------------------------------------------------------------------------
+5. ARQUIVOS CRIADOS / MODIFICADOS E SUAS LOCALIZAÇÕES
+----------------------------------------------------------------------------------------------
+
+Todos os caminhos são relativos à raiz do projeto (a pasta "Cadastro Pokemon"). A pasta ENTREGA
+reproduz exatamente essa estrutura: basta copiar o conteúdo dela por cima do projeto.
+
+MODIFICADOS (7)
+  README.md              Acrescentadas instruções de migração, testes, nomes das variáveis de
+                         ambiente (sem valores) e lista das rotas da API.
+  package.json           Scripts "start", "migrate" e "test"; devDependency @electric-sql/pglite
+                         (usada APENAS pelos testes).
+  package-lock.json      Atualizado pelo npm para refletir a devDependency acima.
+  schema.sql             SQL corrigido; coluna "tipos"; índice único do nome (ver seção 8).
+  script.js              Front-end integrado à API (ver abaixo).
+  script_db.js           Camada de acesso ao banco (reescrita completa; ver abaixo).
+  server.js              Rotas reais da API (reescrito; ver abaixo).
+
+CRIADOS (7)
+  .gitignore             Ignora .env e node_modules/.
+  migrate.js             Aplica schema.sql e confere a estrutura (npm run migrate).
+  validacao.js           Validação das entradas da API.
+  test/neon-shim.js      Servidor de teste que imita o endpoint HTTP do Neon.
+  test/api.test.js       17 testes de integração ponta a ponta (HTTP -> banco).
+  test/migrate.test.js   5 testes do migrate contra estruturas pré-existentes.
+  test/validacao.test.js 11 testes unitários de validação.
+  (o par de TXT ENTREGA/PROMPT.txt e ENTREGA/ALTERACOES_REALIZADAS.txt é só documentação e
+   não deve ser copiado para o projeto)
+
+NÃO ALTERADOS (não enviados): .env, index.html, style.css, exercicio.md, pikachu.png,
+charmander.png, pasta .git e node_modules.
+
+--- O que foi implementado em cada arquivo ---
+
+script_db.js (camada de dados / "repository")
+  - Lê DATABASE_URL (e opcionalmente NEON_HTTP_ENDPOINT) a cada uso; valida formato
+    (postgres/postgresql, host, usuário, banco) sem nunca imprimir o valor.
+  - Envia as consultas por HTTP ao Neon exatamente como o driver oficial: cabeçalhos
+    Neon-Connection-String, Neon-Raw-Text-Output, Neon-Array-Mode; transações em lote com
+    Neon-Batch-Isolation-Level: ReadCommitted. Timeout de 20 s.
+  - Converte resultados (inteiros/booleanos) por OID do Postgres, sem depender de conversão
+    implícita do servidor.
+  - ErroBanco com "tipo" (CONFIG, CONEXAO, ESTRUTURA, CONSULTA, NAO_ENCONTRADO, DUPLICADO,
+    LIMITE) e SQLSTATE: 23505 -> DUPLICADO; 42P01/42703 -> ESTRUTURA; classes 08/28/57 ->
+    CONEXAO. Nunca devolve null/[] para esconder falha.
+  - Redige (mascara) a string de conexão e a senha de qualquer texto de erro vindo do banco.
+  - Funções: listarBaralho, contarBaralho, buscarPokemonBaralho, salvarPokemonBaralho,
+    atualizarPokemonBaralho, removerPokemonBaralho, verificarBanco, executarQueryNeon,
+    executarTransacaoNeon. Todas com parâmetros $1, $2... (nenhuma concatenação de valores).
+    Na atualização, os nomes das colunas vêm de uma lista fixa interna, nunca do cliente.
+  - salvarPokemonBaralho roda em UMA transação: (1) pg_advisory_xact_lock; (2) INSERT condicionado
+    a "total < 12" e "nome ainda não existe"; (3) SELECT de diagnóstico para informar se a
+    recusa foi por LIMITE ou DUPLICADO. O lock é liberado no commit/rollback; por ter escopo de
+    transação, é compatível em princípio com poolers em modo transação (não verificado no Neon real).
+
+server.js (rotas / "controller")
+  - Remove o try/catch silencioso e as funções falsas.
+  - Rotas: GET /api/saude; GET e POST /api/baralho; GET, PUT, PATCH e DELETE /api/baralho/:id.
+  - Status HTTP: 200/201, 400 (validação / JSON inválido / id inválido), 404, 405, 409
+    (duplicado / limite), 413 (corpo > 100 KB), 503 (banco indisponível ou não configurado),
+    500 (demais). Mensagens ao cliente nunca trazem host, usuário ou credenciais; o detalhe
+    técnico vai só para o log do servidor.
+  - Carrega o dotenv no início (PORT passa a respeitar o .env), trata erro de leitura de
+    arquivo estático, adiciona cabeçalho X-Content-Type-Options e Cache-Control: no-store na API.
+  - Na partida, faz um diagnóstico explícito do banco e registra "Conexão OK (n/12)" ou a causa
+    da falha. Sem banco, o servidor continua servindo a página e a API responde 503.
+  - Encerramento limpo (SIGINT/SIGTERM). Exporta criarServidor() para os testes.
+
+validacao.js
+  - nome 3-50 caracteres (letras, números, espaço, . ' ’ : -); treinador opcional, até 50, sem
+    caracteres de controle; poder inteiro entre 100 e 2.147.483.647 (limite da coluna INT);
+    tipos: até 3 nomes minúsculos; imagem: URL http(s) opcional de até 500 caracteres; id:
+    inteiro positivo. Campos editáveis na atualização: apenas treinador e poder.
+
+migrate.js
+  - Executa o schema.sql instrução por instrução, informando cada uma; para no primeiro erro.
+  - Depois confere a estrutura REAL da tabela baralho (tipos das colunas, id com valor
+    automático, colunas extras NOT NULL sem padrão) e lista incompatibilidades. Não altera
+    nem apaga nada além do que o schema.sql (aditivo) define.
+
+script.js (front-end)
+  - Ao abrir a página, carrega o baralho de GET /api/baralho (dados do banco).
+  - Cadastro: mantém todas as validações e a consulta à PokéAPI e passa a gravar por POST
+    /api/baralho; só mostra o card depois que o banco confirma. Erros do servidor (duplicado,
+    limite de 12, banco fora do ar) aparecem no campo de feedback. Botão de enviar fica
+    desabilitado durante a gravação.
+  - Remoção: o botão "x" chama DELETE /api/baralho/:id e só então remove o card.
+  - Segurança: função escaparHTML aplicada a todo texto vindo do banco; o onclick inline foi
+    trocado por addEventListener (identificação por id, não por nome).
+  - Pequenos ajustes: imagem usa sprite padrão como alternativa se faltar a "official-artwork";
+    poder decimal é recusado com mensagem. Aparência (HTML/CSS) inalterada.
+
+
+----------------------------------------------------------------------------------------------
+6. CONFIGURAÇÃO DA CONEXÃO COM O BANCO DE DADOS (somente nomes)
+----------------------------------------------------------------------------------------------
+
+  DATABASE_URL         OBRIGATÓRIA. String de conexão no formato postgresql://usuario:senha@host/banco
+                       (a mesma variável que o projeto original já usava). Nenhum valor foi lido,
+                       copiado ou alterado por mim.
+  PORT                 Opcional (padrão 3002).
+  NEON_HTTP_ENDPOINT   Opcional, SÓ para testes/proxy local. Em uso normal NÃO definir: o endpoint
+                       é derivado de DATABASE_URL como https://<host>/sql.
+
+Gestão de conexões: o Neon por HTTP é sem estado (cada chamada é independente), por isso NÃO há
+pool a configurar, não existem conexões duplicadas/vazando e não há conexão a encerrar no
+shutdown. Justificativa para manter essa tecnologia em vez de trocar por "pg": é a escolha do
+projeto, funciona sem dependências extras e suporta transações por lote.
+
+O dotenv é carregado com override desligado (padrão): variáveis já definidas no ambiente do
+sistema nunca são sobrescritas pelo arquivo .env.
+
+
+----------------------------------------------------------------------------------------------
+7. MODELS, TABELAS E RELACIONAMENTOS
+----------------------------------------------------------------------------------------------
+
+Uma única tabela, "baralho", sem chaves estrangeiras (o domínio não tem outras entidades):
+
+  id           INTEGER  GENERATED ALWAYS AS IDENTITY, PRIMARY KEY
+  nome         VARCHAR(50)  NOT NULL
+  combatPower  INT          NOT NULL, CHECK (>= 100)   (no Postgres a coluna se chama "combatpower")
+  img          TEXT         NOT NULL
+  treinador    VARCHAR(50)  NOT NULL                   (vazio "" quando não informado)
+  tipos        TEXT         NOT NULL DEFAULT ''        (NOVA; lista separada por vírgula: fire,flying)
+  índice único baralho_nome_unico em lower(nome)       (NOVO)
+
+Mapeamento banco -> API/front-end: combatPower -> "poder", img -> "imagem", tipos -> lista
+["fire","flying"]. Não existe model/ORM; o mapeamento é feito em linhaParaPokemon().
+
+Justificativa dos acréscimos: a coluna "tipos" é exigida pelo próprio front-end (cor do card e
+texto "Tipo:"), que antes não tinha onde persistir essa informação. Foi guardada como texto
+separado por vírgula (e não array do Postgres) para trafegar com segurança como parâmetro simples
+no endpoint HTTP. O índice único é a segunda barreira de integridade para o requisito
+"nome não repetido" que o front-end já aplicava.
+
+
+----------------------------------------------------------------------------------------------
+8. MIGRATIONS E ALTERAÇÕES ESTRUTURAIS
+----------------------------------------------------------------------------------------------
+
+Comando: npm run migrate   (NÃO é executado automaticamente ao iniciar o servidor).
+
+O schema.sql contém apenas 3 instruções, todas idempotentes e NÃO destrutivas:
+  1. CREATE TABLE IF NOT EXISTS baralho (...)
+  2. ALTER TABLE baralho ADD COLUMN IF NOT EXISTS tipos TEXT NOT NULL DEFAULT ''
+  3. CREATE UNIQUE INDEX IF NOT EXISTS baralho_nome_unico ON baralho (lower(nome))
+
+Nenhuma instrução apaga tabela, coluna, linha ou dado. Pontos de atenção (documentados antes de
+executar, como solicitado):
+  - Se a SUA tabela baralho já existe e tem registros, os registros antigos ficarão com tipos = ''
+    (o card aparece com a cor cinza padrão). Nada é perdido.
+  - Se existirem nomes repetidos (ignorando maiúsculas/minúsculas) na sua tabela, a instrução 3
+    FALHA com mensagem explicando; nada é apagado. Corrija os duplicados manualmente e rode de novo.
+  - Se a estrutura real for diferente da esperada (ex.: id do tipo texto, coluna combatPower criada
+    com aspas, coluna extra obrigatória), o migrate informa cada divergência e termina com erro,
+    sem alterar a tabela. Nesse caso me informe a estrutura para adaptarmos o código.
+  - Em tabelas criadas ANTES desta alteração, o CHECK (combatPower >= 100) NÃO é adicionado
+    retroativamente (só vale para a tabela criada pelo schema.sql novo).
+
+Não foram criados seeders (não há dados de domínio que precisem ser pré-carregados).
+
+
+----------------------------------------------------------------------------------------------
+9. ROTAS, CONTROLLERS E SERVICES INTEGRADOS
+----------------------------------------------------------------------------------------------
+
+(Arquitetura flat mantida: server.js = rotas/controllers; script_db.js = repositório/serviço de
+dados; validacao.js = validação.)
+
+  GET    /api/saude         verifica conexão e existência da tabela -> {banco:"ok", total, limite}
+  GET    /api/baralho       lista ordenada por poder desc, nome, id           -> 200 [..]
+  POST   /api/baralho       cria {nome, treinador, poder, tipos, imagem}      -> 201 | 400 | 409
+  GET    /api/baralho/:id   consulta um                                       -> 200 | 404
+  PUT/PATCH /api/baralho/:id atualiza treinador e/ou poder                    -> 200 | 400 | 404
+  DELETE /api/baralho/:id   remove                                            -> 200 | 404
+
+Mudanças de comportamento a observar: o POST agora responde 201 (antes 200) com o registro
+completo, inclusive o "id"; falhas de banco agora respondem 503/500 (antes a API devolvia lista
+vazia silenciosamente).
+
+
+----------------------------------------------------------------------------------------------
+10. FUNCIONALIDADES QUE PASSARAM A USAR DADOS REAIS
+----------------------------------------------------------------------------------------------
+
+  - Carregar o baralho ao abrir/recarregar a página (antes: sempre vazio).
+  - Cadastrar Pokémon (antes: só na memória do navegador).
+  - Remover Pokémon (antes: só da memória).
+  - Escolha do "campeão" (coroa) e ordenação por poder, agora sobre os dados persistidos.
+  - Limite de 12 Pokémon e bloqueio de nome repetido, agora garantidos no servidor/banco.
+  - Atualização de treinador/poder: disponível na API (PUT/PATCH). NÃO foi criada tela de edição,
+    pois o front-end original não tinha essa funcionalidade.
+
+
+----------------------------------------------------------------------------------------------
+11. TESTES EXECUTADOS E RESULTADOS
+----------------------------------------------------------------------------------------------
+
+A) Suíte automatizada do projeto: npm test  ->  33 testes, 33 aprovados, 0 falhas.
+   (Node v22.23.5; PostgreSQL em memória PGlite 0.5.16; NÃO acessa banco real.)
+   - 11 de validação; 5 do migrate; 17 de integração ponta a ponta, que cobrem:
+     criação (conferida direto na tabela, não só na resposta), tipos múltiplos, duplicado com
+     caixa diferente (409), 9 entradas inválidas (400, nada gravado), tentativa de SQL injection
+     ("Ash'); DROP TABLE baralho;--" gravado como texto e tabela preservada), leitura e ordenação,
+     leitura por id (200/404/400), atualização (inclusive ignorar mudança de nome), exclusão (e
+     404 ao repetir), limite de 12 e liberação de vaga, concorrência, rollback de transação,
+     falhas (HTTP 500 do banco, erro de autenticação 28P01, tabela inexistente 42P01, servidor do
+     banco fora do ar, DATABASE_URL vazia/ inválida/ de outro protocolo -> sempre 503/500 sem
+     vazar detalhes), credenciais só no cabeçalho e ausentes de respostas e logs, rotas/métodos
+     inválidos, estáticos, corpo grande (413).
+   - migrate: banco vazio; repetição segura; tabela antiga SEM a coluna tipos (coluna adicionada e
+     dados preservados); duplicados existentes (falha avisando, nada apagado); tabela incompatível
+     (reprovada sem alterar dados); sem DATABASE_URL.
+
+B) Concorrência com PostgreSQL 16.15 REAL e pool de 20 conexões simultâneas:
+   - 60 inclusões simultâneas, nomes distintos: 12 criadas, 48 recusadas por limite, total no
+     banco = 12.
+   - 40 inclusões simultâneas do MESMO nome (maiúsculas/minúsculas alternadas): 1 criada, 39
+     recusadas como duplicadas.
+   - Carga mista de 120 operações (inclusões e remoções): máximo observado = 12.
+   - Nenhum advisory lock ficou pendente.
+   - EXPERIMENTO DE CONTROLE, mesma carga SEM o advisory lock: 16 registros (e pico de 18 na
+     carga mista) -> prova que o lock é necessário e que o teste detecta a falha.
+
+C) Ponta a ponta com navegador real (Chromium) + "npm start" + PostgreSQL 16 real: 17 verificações,
+   todas aprovadas: log de partida "Conexão OK"; página carrega registro pré-existente do banco;
+   cadastro pelo formulário grava de fato na tabela; dados persistem após recarregar (F5); campeão
+   com 👑 calculado a partir do banco; duplicado barrado; treinador com HTML malicioso gravado como
+   dado e exibido como texto, sem executar script (0 alertas); remoção pelo botão apaga da tabela
+   e continua removido após recarregar; banco fora do ar -> a tela mostra o erro e NÃO adiciona
+   card; logs sem credenciais.
+
+D) Partida sem credenciais (projeto como recebido, .env vazio): "npm start" sobe, a página abre
+   (200), a API responde 503 "Banco de dados indisponível no momento." e o log informa
+   "Variável de ambiente DATABASE_URL não está definida." "npm run migrate" falha com a mesma
+   mensagem. DATABASE_URL malformada não vaza o valor. O .env permaneceu 0 bytes, idêntico ao
+   original.
+
+E) Verificação de sintaxe (node --check) de todos os .js.
+
+NÃO executado / limitações dos testes:
+  - NÃO houve teste contra o seu banco Neon real (ver Aviso 2). O servidor de teste do protocolo
+    foi escrito por mim a partir do driver oficial; uma diferença de comportamento do serviço
+    real que não esteja no código do driver não seria detectada.
+  - A PokéAPI foi SIMULADA nos testes de navegador (o ambiente não acessa esse site); o código que a
+    chama (script.js) não foi alterado, exceto pela alternativa de imagem.
+  - Não há script de "build" no projeto (aplicação sem etapa de compilação); nada a executar.
+
+
+----------------------------------------------------------------------------------------------
+12. PROBLEMAS NÃO RESOLVIDOS, PENDÊNCIAS E LIMITAÇÕES
+----------------------------------------------------------------------------------------------
+
+ 1. Credenciais/variáveis: ver Aviso 1. Se o nome da variável no seu .env não for DATABASE_URL, é
+    necessário ajustar.
+ 2. Teste real pendente no Neon: ver Aviso 2.
+ 3. Estrutura atual da sua tabela baralho desconhecida: o "npm run migrate" a confere e informa
+    qualquer divergência.
+ 4. SEM autenticação/autorização (inexistentes no projeto original). Qualquer pessoa que alcance
+    o servidor pode criar, alterar e excluir Pokémon. Recomendado antes de expor na internet.
+ 5. O servidor valida formato, mas NÃO confirma na PokéAPI que o Pokémon existe (isso continua
+    sendo feito apenas pelo navegador). Um cliente que chame a API diretamente pode gravar um nome
+    que não exista na PokéAPI.
+ 6. Segurança do git: o projeto não tinha .gitignore e o .env e a pasta node_modules/ estão
+    RASTREADOS no git. Foi criado o .gitignore, mas ele não "desrastreia" arquivos já rastreados.
+    Antes de colocar suas credenciais e fazer commit, execute no projeto:
+        git rm --cached .env
+        git rm -r --cached node_modules
+    (O .env versionado no histórico está vazio, então nada vazou até agora.)
+ 7. Registros que já existam na sua tabela terão "tipos" vazio (card cinza) - ver seção 8.
+ 8. O limite de 12 é aplicado pela aplicação (transação + lock), não por restrição no banco: quem
+    inserir direto no banco por fora da aplicação pode ultrapassá-lo.
+ 9. Não há tela para editar um Pokémon; apenas a API de atualização.
+10. Bug antigo NÃO alterado (inalcançável hoje): em script.js, mostrarPokemon() lê
+    dadosPokemon.base_experience antes de checar se dadosPokemon é nulo; como quem chama já
+    garante que não é nulo, não afeta o funcionamento.
+11. exercicio.md está vazio e foi ignorado.
+12. O ZIP trouxe a pasta .git e node_modules; nenhum dos dois foi alterado por mim.
+
+
+----------------------------------------------------------------------------------------------
+13. DECISÕES TÉCNICAS RESUMIDAS
+----------------------------------------------------------------------------------------------
+
+ - Mantido Neon via HTTP + fetch (sem trocar para "pg"/ORM): é a stack existente; stateless.
+ - Estrutura de arquivos plana preservada; só foi criado módulo novo onde havia necessidade real
+   (validacao.js, migrate.js).
+ - Dependência de produção: nenhuma nova. A única nova é de desenvolvimento (PGlite) e só é usada
+   por "npm test".
+ - Os testes nunca tocam o seu banco: só aceitam falar com um servidor local em 127.0.0.1 e
+   usam valores de conexão FICTÍCIOS definidos no próprio teste.
+ - Nenhuma operação destrutiva foi executada ou é feita pelo código (não há DROP/TRUNCATE; o
+   DELETE só existe na rota de remoção por id, acionada pelo usuário).
+
+
+----------------------------------------------------------------------------------------------
+14. INSTRUÇÕES PARA EXECUTAR
+----------------------------------------------------------------------------------------------
+
+ 1. Copie o conteúdo da pasta ENTREGA (exceto os 2 arquivos TXT) para a raiz do projeto
+    "Cadastro Pokemon", aceitando substituir os arquivos modificados. NÃO existe .env na entrega:
+    o seu continua como está.
+ 2. No terminal, dentro do projeto:
+        npm install
+ 3. Confirme que o seu .env define DATABASE_URL (apenas o nome importa aqui; não compartilhe o
+    valor com ninguém).
+ 4. Crie/confira a estrutura no banco (seguro e não destrutivo):
+        npm run migrate
+    Esperado ao final: "Estrutura conferida: tabela "baralho" compatível com a aplicação."
+    Se aparecer lista de incompatibilidades ou nomes duplicados, siga a seção 8 e/ou me envie a
+    mensagem (ela não contém credenciais).
+ 5. Inicie:
+        npm start
+    O terminal deve mostrar: "[banco] Conexão OK (n/12 Pokémon no baralho)."
+ 6. Abra http://localhost:3002 (ou a porta definida em PORT) e confira http://localhost:3002/api/saude
+ 7. Testes automatizados (não usam o seu banco):
+        npm test
+ 8. Faça os comandos do item 6 da seção 12 (git rm --cached ...) antes do primeiro commit.
+
+==============================================================================================
+FIM DO RELATÓRIO
+==============================================================================================
