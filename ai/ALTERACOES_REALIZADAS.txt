@@ -2,35 +2,6 @@
 RELATÓRIO TÉCNICO - INTEGRAÇÃO COM BANCO DE DADOS - PROJETO "CADASTRO POKEMON"
 ==============================================================================================
 
-Nenhuma senha, token ou valor de credencial aparece neste documento. Apenas NOMES de variáveis.
-
-
-----------------------------------------------------------------------------------------------
-0. LEIA PRIMEIRO - 3 AVISOS IMPORTANTES
-----------------------------------------------------------------------------------------------
-
-(1) O ARQUIVO .env QUE VEIO NO ZIP ESTÁ VAZIO (0 bytes), inclusive no histórico do git.
-    Portanto as suas credenciais atualizadas NÃO chegaram até mim, e eu não pude me conectar ao
-    seu banco real. Conforme pedido, o .env não foi tocado (confirmado por comparação byte a
-    byte com o original) e nenhum .env novo foi criado.
-    Como não vi o seu .env, a única variável que o código espera é DATABASE_URL (era a única
-    que o projeto original já referenciava). Se as suas credenciais atualizadas estiverem
-    gravadas com outro nome de variável (ex.: PGHOST, DB_HOST...), o código precisa ser
-    ajustado - me informe os NOMES (nunca os valores).
-
-(2) A INTEGRAÇÃO NÃO FOI TESTADA CONTRA O SEU NEON REAL (pelo item acima, e porque o ambiente
-    de execução só acessa uma lista restrita de sites). Foi testada contra:
-      - um PostgreSQL 16 REAL (com várias conexões simultâneas),
-      - um PostgreSQL em memória (PGlite),
-    ambos atrás de um servidor de teste que implementa o protocolo HTTP do Neon, escrito a
-    partir do código-fonte do driver oficial (@neondatabase/serverless 1.0.2). Isso comprova
-    a lógica, o SQL e o tratamento de erros, mas NÃO substitui um teste real: o primeiro
-    passo na sua máquina é "npm run migrate" seguido de abrir /api/saude (ver seção 14).
-
-(3) O projeto NÃO possuía autenticação/autorização de nenhum tipo. Nada foi removido, mas a API
-    nova (criar/alterar/excluir) fica aberta a quem alcançar o servidor. Ver seção 12.
-
-
 ----------------------------------------------------------------------------------------------
 1. RESUMO GERAL DO TRABALHO
 ----------------------------------------------------------------------------------------------
